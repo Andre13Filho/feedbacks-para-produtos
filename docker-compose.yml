@@ -1,0 +1,33 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: feedback-db
+    restart: always
+    environment:
+      MYSQL_DATABASE: feedback_db
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3307:3306"
+    volumes:
+      # Inicializa o banco automaticamente com o seu script
+      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  app:
+    build: .
+    container_name: feedback-app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=feedback_db
+      - DB_USER=root
+      - DB_PASS=root
+    depends_on:
+      db:
+        condition: service_healthy
