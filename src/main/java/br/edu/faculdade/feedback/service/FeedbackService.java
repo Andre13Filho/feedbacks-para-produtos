@@ -67,4 +67,15 @@ public class FeedbackService {
     public List<Feedback> listarFeedbacksDoProduto(int produtoId) throws SQLException {
         return feedbackDAO.listarPorProduto(produtoId);
     }
+
+    public double calcularMediaAvaliacoes(List<Feedback> feedbacks) {
+        if (feedbacks == null || feedbacks.isEmpty()) {
+            return 0.0;
+        }
+        double soma = 0;
+        for (Feedback f : feedbacks) {
+            soma += f.getNota();
+        }
+        return soma / feedbacks.size();
+    }
 }

@@ -11,6 +11,24 @@ import java.util.List;
 public class ProdutoDAO {
 
 
+    public void inserir(Produto produto) throws SQLException {
+        String sql = "INSERT INTO Produtos (nome, descricao) VALUES (?, ?)";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+
+            stmt.setString(1, produto.getNome());
+            stmt.setString(2, produto.getDescricao());
+            stmt.executeUpdate();
+
+            try (ResultSet chaveGerada = stmt.getGeneratedKeys()) {
+                if (chaveGerada.next()) {
+                    produto.setId(chaveGerada.getInt(1));
+                }
+            }
+        }
+    }
+
     public List<Produto> listarTodos() throws SQLException {
         String sql = "SELECT id, nome, descricao FROM Produtos ORDER BY nome";
 

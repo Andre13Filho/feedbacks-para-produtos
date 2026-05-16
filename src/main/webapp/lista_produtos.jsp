@@ -111,11 +111,20 @@
 
 <body>
     <div class="container">
-        <h1>Produtos Disponíveis para Avaliação</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e8eaed; margin-bottom: 24px; padding-bottom: 12px;">
+            <h1 style="margin: 0; border: none; padding: 0;">Produtos Disponíveis</h1>
+            <a class="btn" href="<%= ctx %>/produto/novo" style="background: #34a853;">+ Novo Produto</a>
+        </div>
         
         <% if ("true".equals(sucesso)) { %>
             <div class="alert-success">
                 ✔ Feedback enviado com sucesso! Muito obrigado pela sua avaliação.
+            </div>
+        <% } %>
+
+        <% if (request.getParameter("sucesso_produto") != null) { %>
+            <div class="alert-success">
+                ✔ Produto cadastrado com sucesso!
             </div>
         <% } %>
 
@@ -144,7 +153,8 @@
                                 <%= p.getDescricao() != null ? p.getDescricao() : "Sem descrição" %>
                             </td>
                             <td style="text-align: center;">
-                                <a class="btn" href="<%= ctx %>/produto/avaliar?id=<%= p.getId() %>">Avaliar</a>
+                                <a class="btn" href="<%= ctx %>/produto/detalhes?id=<%= p.getId() %>" style="background: #fbbc04; color: #000; margin-right: 8px;">★ Avaliações</a>
+                                <a class="btn" href="<%= ctx %>/produto/avaliar?id=<%= p.getId() %>">Deixar Feedback</a>
                             </td>
                         </tr>
                     <% } %>
