@@ -4,8 +4,9 @@ import br.edu.faculdade.feedback.model.entity.Feedback;
 import br.edu.faculdade.feedback.model.entity.Produto;
 import br.edu.faculdade.feedback.service.FeedbackService;
 import br.edu.faculdade.feedback.service.ProdutoService;
+import br.edu.faculdade.feedback.util.JsonUtil;
+import com.google.gson.JsonObject;
 
-import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,121 +15,84 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
-@WebServlet("/produto/*")
+/**
+ * Controller REST para operações com Produtos.
+ * Recebe requisições HTTP, lê os dados do body em JSON
+ * e retorna as respostas também em JSON.
+ *
+ * Rotas:
+ *   GET  /api/produtos          → lista todos os produtos
+ *   GET  /api/produtos/1        → busca produto por ID (com feedbacks)
+ *   POST /api/produtos          → cadastra um produto novo
+ *
+ * Projeto: Aplicativo de Feedback para Produtos
+ * Autores: André (5169692) e Otávio (5167958)
+ */
+@WebServlet("/api/produtos/*")
 public class ProdutoController extends HttpServlet {
 
-    private static final String PREFIXO_APP = "/produto";
-    private final ProdutoService produtoService = new ProdutoService(); // Instância criada corretamente
+    private final ProdutoService produtoService = new ProdutoService();
     private final FeedbackService feedbackService = new FeedbackService();
 
+    /**
+     * GET /api/produtos      → lista todos
+     * GET /api/produtos/1    → busca por ID com feedbacks e média
+     */
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String rota = extrairRota(req);
-
-        switch (rota) {
-            case "/listar":
-                listar(req, resp);
-                break;
-            case "/avaliar":
-                avaliar(req, resp);
-                break;
-            case "/novo":
-                novo(req, resp);
-                break;
-            case "/detalhes":
-                detalhes(req, resp);
-                break;
-            default:
-                resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar");
-                break;
-        }
-    }
-
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String rota = extrairRota(req);
-        if ("/cadastrar".equals(rota)) {
-            cadastrar(req, resp);
-        } else {
-            resp.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
-        }
-    }
-
-    private String extrairRota(HttpServletRequest req) {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String pathInfo = req.getPathInfo();
-        if (pathInfo == null || pathInfo.isEmpty() || "/".equals(pathInfo)) {
-            return "/listar";
-        }
-        return pathInfo;
-    }
 
-    private void listar(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
-            List<Produto> produtos = produtoService.listar(); // [cite: 91-96]
-            req.setAttribute("produtos", produtos);
-            req.getRequestDispatcher("/lista_produtos.jsp").forward(req, resp);
-        } catch (SQLException e) {
-            throw new ServletException("Erro ao buscar a lista de produtos", e);
-        }
-    }
-
-    private void avaliar(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String idParam = req.getParameter("id");
-        if (idParam != null && !idParam.isEmpty()) {
-            try {
-                int id = Integer.parseInt(idParam);
+            // Se não veio ID na URL, lista todos os produtos
+            if (pathInfo == null || "/".equals(pathInfo)) {
+                List<Produto> produtos = produtoService.listar();
+                JsonUtil.enviarResposta(resp, 200, produtos);
+            } else {
+                // Extrai o ID da URL (ex: /api/produtos/3 → "3")
+                int id = Integer.parseInt(pathInfo.substring(1));
                 Produto produto = produtoService.buscarPorId(id);
-                if (produto != null) {
-                    req.setAttribute("produto", produto);
-                    req.getRequestDispatcher("/form-feedback.jsp").forward(req, resp);
+
+                if (produto == null) {
+                    JsonUtil.enviarErro(resp, 404, "Produto não encontrado com o ID: " + id);
                     return;
                 }
-            } catch (SQLException | NumberFormatException e) {
-                // Em caso de id inválido ou erro, prossegue para redirecionar à listagem
+
+                // Monta a resposta com produto + feedbacks + média
+                List<Feedback> feedbacks = feedbackService.listarFeedbacksDoProduto(id);
+                double media = feedbackService.calcularMediaAvaliacoes(feedbacks);
+
+                JsonObject json = new JsonObject();
+                json.add("produto", JsonUtil.getGson().toJsonTree(produto));
+                json.add("feedbacks", JsonUtil.getGson().toJsonTree(feedbacks));
+                json.addProperty("mediaAvaliacoes", media);
+                json.addProperty("totalFeedbacks", feedbacks.size());
+
+                JsonUtil.enviarResposta(resp, 200, json);
             }
+        } catch (NumberFormatException e) {
+            JsonUtil.enviarErro(resp, 400, "ID inválido. Informe um número inteiro.");
+        } catch (SQLException e) {
+            JsonUtil.enviarErro(resp, 500, "Erro interno ao acessar o banco de dados.");
         }
-        resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar");
     }
 
-    private void novo(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        req.getRequestDispatcher("/form_produto.jsp").forward(req, resp);
-    }
-
-    private void cadastrar(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String nome = req.getParameter("nome");
-        String descricao = req.getParameter("descricao");
-
+    /**
+     * POST /api/produtos
+     * Body JSON esperado: { "nome": "...", "descricao": "..." }
+     */
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         try {
-            produtoService.cadastrar(nome, descricao);
-            resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?sucesso_produto=true");
+            // Lê o JSON do body da requisição e converte para objeto Produto
+            Produto dados = JsonUtil.lerBody(req, Produto.class);
+
+            produtoService.cadastrar(dados.getNome(), dados.getDescricao());
+
+            JsonUtil.enviarSucesso(resp, 201, "Produto cadastrado com sucesso!");
         } catch (IllegalArgumentException e) {
-            resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/novo?erro=" + resp.encodeRedirectURL(e.getMessage()));
+            JsonUtil.enviarErro(resp, 400, e.getMessage());
         } catch (SQLException e) {
-            throw new ServletException("Erro ao cadastrar produto", e);
+            JsonUtil.enviarErro(resp, 500, "Erro interno ao cadastrar produto.");
         }
-    }
-
-    private void detalhes(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String idParam = req.getParameter("id");
-        if (idParam != null && !idParam.isEmpty()) {
-            try {
-                int id = Integer.parseInt(idParam);
-                Produto produto = produtoService.buscarPorId(id);
-                if (produto != null) {
-                    List<Feedback> feedbacks = feedbackService.listarFeedbacksDoProduto(id);
-                    double media = feedbackService.calcularMediaAvaliacoes(feedbacks);
-
-                    req.setAttribute("produto", produto);
-                    req.setAttribute("feedbacks", feedbacks);
-                    req.setAttribute("media", media);
-
-                    req.getRequestDispatcher("/detalhes_produto.jsp").forward(req, resp);
-                    return;
-                }
-            } catch (SQLException | NumberFormatException e) {
-                // Em caso de id inválido ou erro, prossegue para redirecionar à listagem
-            }
-        }
-        resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar");
     }
 }
