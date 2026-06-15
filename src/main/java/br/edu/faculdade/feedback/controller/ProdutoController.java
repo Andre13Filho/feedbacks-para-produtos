@@ -4,8 +4,9 @@ import br.edu.faculdade.feedback.model.entity.Feedback;
 import br.edu.faculdade.feedback.model.entity.Produto;
 import br.edu.faculdade.feedback.service.FeedbackService;
 import br.edu.faculdade.feedback.service.ProdutoService;
+import br.edu.faculdade.feedback.util.JsonUtil;
+import com.google.gson.JsonObject;
 
-import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -14,13 +15,29 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
-@WebServlet("/produto/*")
+/**
+ * Controller REST para operações com Produtos.
+ * Recebe requisições HTTP, lê os dados do body em JSON
+ * e retorna as respostas também em JSON.
+ *
+ * Rotas:
+ * GET /api/produtos → lista todos os produtos
+ * GET /api/produtos/1 → busca produto por ID (com feedbacks)
+ * POST /api/produtos → cadastra um produto novo
+ *
+ * Projeto: Aplicativo de Feedback para Produtos
+ * Autores: André (5169692) e Otávio (5167958)
+ */
+@WebServlet("/api/produtos/*")
 public class ProdutoController extends HttpServlet {
 
-    private static final String PREFIXO_APP = "/produto";
-    private final ProdutoService produtoService = new ProdutoService(); // Instância criada corretamente
+    private final ProdutoService produtoService = new ProdutoService();
     private final FeedbackService feedbackService = new FeedbackService();
 
+    /**
+     * GET /api/produtos → lista todos
+     * GET /api/produtos/1 → busca por ID com feedbacks e média
+     */
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String rota = extrairRota(req);
@@ -74,7 +91,8 @@ public class ProdutoController extends HttpServlet {
                 produtoService.atualizar(id, nome, descricao);
                 resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?sucesso_atualizacao=true");
             } catch (IllegalArgumentException e) {
-                resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
+                resp.sendRedirect(
+                        req.getContextPath() + PREFIXO_APP + "/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
             } catch (SQLException | NumberFormatException e) {
                 throw new ServletException("Erro ao atualizar produto", e);
             }
@@ -92,7 +110,8 @@ public class ProdutoController extends HttpServlet {
                 produtoService.deletar(id);
                 resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?sucesso_delecao=true");
             } catch (IllegalArgumentException e) {
-                resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
+                resp.sendRedirect(
+                        req.getContextPath() + PREFIXO_APP + "/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
             } catch (SQLException | NumberFormatException e) {
                 throw new ServletException("Erro ao deletar produto", e);
             }
@@ -125,9 +144,9 @@ public class ProdutoController extends HttpServlet {
             try {
                 int id = Integer.parseInt(idParam);
                 Produto produto = produtoService.buscarPorId(id);
-                if (produto != null) {
-                    req.setAttribute("produto", produto);
-                    req.getRequestDispatcher("/form-feedback.jsp").forward(req, resp);
+
+                if (produto == null) {
+                    JsonUtil.enviarErro(resp, 404, "Produto não encontrado com o ID: " + id);
                     return;
                 }
             } catch (SQLException | NumberFormatException e) {
@@ -144,15 +163,20 @@ public class ProdutoController extends HttpServlet {
         String nome = req.getParameter("nome");
         String descricao = req.getParameter("descricao");
 
-        try {
-            produtoService.cadastrar(nome, descricao);
-            resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?sucesso_produto=true");
-        } catch (IllegalArgumentException e) {
-            resp.sendRedirect(
-                    req.getContextPath() + PREFIXO_APP + "/novo?erro=" + resp.encodeRedirectURL(e.getMessage()));
-        } catch (SQLException e) {
-            throw new ServletException("Erro ao cadastrar produto", e);
-        }
+        produtoService.cadastrar(dados.getNome(), dados.getDescricao());
+
+        JsonUtil.enviarSucesso(resp, 201, "Produto cadastrado com sucesso!");
+    }catch(
+
+    IllegalArgumentException e)
+    {
+        resp.sendRedirect(
+                req.getContextPath() + PREFIXO_APP + "/novo?erro=" + resp.encodeRedirectURL(e.getMessage()));
+    }catch(
+    SQLException e)
+    {
+        throw new ServletException("Erro ao cadastrar produto", e);
+    }
     }
 
     private void detalhes(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {

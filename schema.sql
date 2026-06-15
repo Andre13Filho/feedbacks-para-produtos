@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS Usuarios (
     id    INT          NOT NULL AUTO_INCREMENT,
     nome  VARCHAR(100) NOT NULL,
     email VARCHAR(150) NOT NULL UNIQUE,
+    senha VARCHAR(255) NOT NULL,
     PRIMARY KEY (id)
 );
 
@@ -54,9 +55,9 @@ CREATE TABLE IF NOT EXISTS Feedback (
 -- -------------------------------------------------------------
 -- Dados de exemplo para testes
 -- -------------------------------------------------------------
-INSERT INTO Usuarios (nome, email) VALUES
-    ('André Silva',   'andre@email.com'),
-    ('Otávio Santos', 'otavio@email.com');
+INSERT INTO Usuarios (nome, email, senha) VALUES
+    ('André Silva',   'andre@email.com',  'senha123'),
+    ('Otávio Santos', 'otavio@email.com', 'senha456');
 
 INSERT INTO Produtos (nome, descricao) VALUES
     ('Notebook Gamer',  'Notebook de alto desempenho para jogos.'),
