@@ -16,7 +16,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
-@WebServlet("/api/produtos/*")
+@WebServlet("/produto/*")
 public class ProdutoController extends HttpServlet {
 
     private final ProdutoService produtoService = new ProdutoService();
@@ -31,7 +31,7 @@ public class ProdutoController extends HttpServlet {
             case "/avaliar": avaliar(req, resp); break;
             case "/novo": novo(req, resp); break;
             case "/detalhes": detalhes(req, resp); break;
-            default: resp.sendRedirect(req.getContextPath() + "/api/produtos/listar"); break;
+            default: resp.sendRedirect(req.getContextPath() + "/produto/listar"); break;
         }
     }
 
@@ -58,9 +58,9 @@ public class ProdutoController extends HttpServlet {
                 String nome = req.getParameter("nome");
                 String descricao = req.getParameter("descricao");
                 produtoService.atualizar(id, nome, descricao);
-                resp.sendRedirect(req.getContextPath() + "/api/produtos/listar?sucesso_atualizacao=true");
+                resp.sendRedirect(req.getContextPath() + "/produto/listar?sucesso_atualizacao=true");
             } catch (IllegalArgumentException e) {
-                resp.sendRedirect(req.getContextPath() + "/api/produtos/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
+                resp.sendRedirect(req.getContextPath() + "/produto/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
             } catch (SQLException e) {
                 throw new ServletException("Erro ao atualizar produto", e);
             }
@@ -76,9 +76,9 @@ public class ProdutoController extends HttpServlet {
             try {
                 int id = Integer.parseInt(req.getParameter("id"));
                 produtoService.deletar(id);
-                resp.sendRedirect(req.getContextPath() + "/api/produtos/listar?sucesso_delecao=true");
+                resp.sendRedirect(req.getContextPath() + "/produto/listar?sucesso_delecao=true");
             } catch (IllegalArgumentException e) {
-                resp.sendRedirect(req.getContextPath() + "/api/produtos/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
+                resp.sendRedirect(req.getContextPath() + "/produto/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
             } catch (SQLException e) {
                 throw new ServletException("Erro ao deletar produto", e);
             }
@@ -116,7 +116,7 @@ public class ProdutoController extends HttpServlet {
             } catch (SQLException e) {
             }
         }
-        resp.sendRedirect(req.getContextPath() + "/api/produtos/listar");
+        resp.sendRedirect(req.getContextPath() + "/produto/listar");
     }
 
     private void novo(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -128,9 +128,9 @@ public class ProdutoController extends HttpServlet {
             String nome = req.getParameter("nome");
             String descricao = req.getParameter("descricao");
             produtoService.cadastrar(nome, descricao);
-            resp.sendRedirect(req.getContextPath() + "/api/produtos/listar?sucesso=true");
+            resp.sendRedirect(req.getContextPath() + "/produto/listar?sucesso=true");
         } catch (IllegalArgumentException e) {
-            resp.sendRedirect(req.getContextPath() + "/api/produtos/novo?erro=" + resp.encodeRedirectURL(e.getMessage()));
+            resp.sendRedirect(req.getContextPath() + "/produto/novo?erro=" + resp.encodeRedirectURL(e.getMessage()));
         } catch (SQLException e) {
             throw new ServletException("Erro ao cadastrar produto", e);
         }
@@ -154,6 +154,6 @@ public class ProdutoController extends HttpServlet {
             } catch (SQLException e) {
             }
         }
-        resp.sendRedirect(req.getContextPath() + "/api/produtos/listar");
+        resp.sendRedirect(req.getContextPath() + "/produto/listar");
     }
 }
