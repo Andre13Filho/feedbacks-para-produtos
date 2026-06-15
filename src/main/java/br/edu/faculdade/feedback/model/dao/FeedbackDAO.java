@@ -57,6 +57,48 @@ public class FeedbackDAO {
     }
 
 
+    public Feedback buscarPorId(int id) throws SQLException {
+        String sql = "SELECT id, usuario_id, produto_id, nota, comentario, data_criacao "
+                   + "FROM Feedback WHERE id = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return mapearResultado(rs);
+                }
+            }
+        }
+        return null;
+    }
+
+    public void atualizar(Feedback feedback) throws SQLException {
+        String sql = "UPDATE Feedback SET nota = ?, comentario = ? WHERE id = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, feedback.getNota());
+            stmt.setString(2, feedback.getComentario());
+            stmt.setInt(3, feedback.getId());
+            stmt.executeUpdate();
+        }
+    }
+
+    public void deletar(int id) throws SQLException {
+        String sql = "DELETE FROM Feedback WHERE id = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
+        }
+    }
+
     private Feedback mapearResultado(ResultSet rs) throws SQLException {
         return new Feedback(
             rs.getInt("id"),

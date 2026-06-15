@@ -46,9 +46,56 @@ public class ProdutoController extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String method = req.getParameter("_method");
+        if ("PUT".equalsIgnoreCase(method)) {
+            doPut(req, resp);
+            return;
+        } else if ("DELETE".equalsIgnoreCase(method)) {
+            doDelete(req, resp);
+            return;
+        }
+
         String rota = extrairRota(req);
         if ("/cadastrar".equals(rota)) {
             cadastrar(req, resp);
+        } else {
+            resp.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+        }
+    }
+
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String rota = extrairRota(req);
+        if ("/atualizar".equals(rota)) {
+            try {
+                int id = Integer.parseInt(req.getParameter("id"));
+                String nome = req.getParameter("nome");
+                String descricao = req.getParameter("descricao");
+                produtoService.atualizar(id, nome, descricao);
+                resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?sucesso_atualizacao=true");
+            } catch (IllegalArgumentException e) {
+                resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
+            } catch (SQLException | NumberFormatException e) {
+                throw new ServletException("Erro ao atualizar produto", e);
+            }
+        } else {
+            resp.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
+        }
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String rota = extrairRota(req);
+        if ("/deletar".equals(rota)) {
+            try {
+                int id = Integer.parseInt(req.getParameter("id"));
+                produtoService.deletar(id);
+                resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?sucesso_delecao=true");
+            } catch (IllegalArgumentException e) {
+                resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
+            } catch (SQLException | NumberFormatException e) {
+                throw new ServletException("Erro ao deletar produto", e);
+            }
         } else {
             resp.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);
         }
@@ -64,7 +111,7 @@ public class ProdutoController extends HttpServlet {
 
     private void listar(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try {
-            List<Produto> produtos = produtoService.listar(); // [cite: 91-96]
+            List<Produto> produtos = produtoService.listar();
             req.setAttribute("produtos", produtos);
             req.getRequestDispatcher("/lista_produtos.jsp").forward(req, resp);
         } catch (SQLException e) {
@@ -84,7 +131,6 @@ public class ProdutoController extends HttpServlet {
                     return;
                 }
             } catch (SQLException | NumberFormatException e) {
-                // Em caso de id inválido ou erro, prossegue para redirecionar à listagem
             }
         }
         resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar");
@@ -102,7 +148,8 @@ public class ProdutoController extends HttpServlet {
             produtoService.cadastrar(nome, descricao);
             resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?sucesso_produto=true");
         } catch (IllegalArgumentException e) {
-            resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/novo?erro=" + resp.encodeRedirectURL(e.getMessage()));
+            resp.sendRedirect(
+                    req.getContextPath() + PREFIXO_APP + "/novo?erro=" + resp.encodeRedirectURL(e.getMessage()));
         } catch (SQLException e) {
             throw new ServletException("Erro ao cadastrar produto", e);
         }
@@ -126,7 +173,6 @@ public class ProdutoController extends HttpServlet {
                     return;
                 }
             } catch (SQLException | NumberFormatException e) {
-                // Em caso de id inválido ou erro, prossegue para redirecionar à listagem
             }
         }
         resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar");

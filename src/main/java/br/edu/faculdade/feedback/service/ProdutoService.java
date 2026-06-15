@@ -25,4 +25,25 @@ public class ProdutoService {
     public Produto buscarPorId(int id) throws SQLException {
         return produtoDAO.buscarPorId(id);
     }
+
+    public void atualizar(int id, String nome, String descricao) throws IllegalArgumentException, SQLException {
+        if (nome == null || nome.trim().isEmpty()) {
+            throw new IllegalArgumentException("O nome do produto é obrigatório.");
+        }
+        Produto produto = produtoDAO.buscarPorId(id);
+        if (produto == null) {
+            throw new IllegalArgumentException("Produto não encontrado com o ID: " + id);
+        }
+        produto.setNome(nome.trim());
+        produto.setDescricao(descricao != null ? descricao.trim() : null);
+        produtoDAO.atualizar(produto);
+    }
+
+    public void deletar(int id) throws IllegalArgumentException, SQLException {
+        Produto produto = produtoDAO.buscarPorId(id);
+        if (produto == null) {
+            throw new IllegalArgumentException("Produto não encontrado com o ID: " + id);
+        }
+        produtoDAO.deletar(id);
+    }
 }

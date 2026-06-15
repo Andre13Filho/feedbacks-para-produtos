@@ -18,22 +18,27 @@ public class FeedbackController extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String method = req.getParameter("_method");
+        if ("PUT".equalsIgnoreCase(method)) {
+            doPut(req, resp);
+            return;
+        } else if ("DELETE".equalsIgnoreCase(method)) {
+            doDelete(req, resp);
+            return;
+        }
+
         try {
-            // Captura os dados do formulário [cite: 1, 102-110]
             int produtoId = Integer.parseInt(req.getParameter("produtoId"));
             int nota = Integer.parseInt(req.getParameter("nota"));
             String comentario = req.getParameter("comentario");
 
-            // Simulação de usuário logado (conforme o exemplo de sessão do material)
             Usuario usuarioLogado = (Usuario) req.getSession().getAttribute("usuarioLogado");
-            
-            // Define um usuário de fallback seguro caso a sessão ainda não possua o objeto logado
+
             int usuarioId = 1;
             if (usuarioLogado != null) {
                 usuarioId = usuarioLogado.getId();
             }
 
-            // Utiliza o método correto do serviço que aplica regras de negócio e salva o feedback
             feedbackService.registrarFeedback(usuarioId, produtoId, nota, comentario);
 
             resp.sendRedirect(req.getContextPath() + "/produto/listar?sucesso=true");
@@ -41,6 +46,37 @@ public class FeedbackController extends HttpServlet {
             resp.sendRedirect(req.getContextPath() + "/produto/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
         } catch (SQLException e) {
             throw new ServletException("Erro ao processar o feedback no banco de dados", e);
+        }
+    }
+
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        try {
+            int feedbackId = Integer.parseInt(req.getParameter("id"));
+            int nota = Integer.parseInt(req.getParameter("nota"));
+            String comentario = req.getParameter("comentario");
+
+            feedbackService.atualizar(feedbackId, nota, comentario);
+
+            resp.sendRedirect(req.getContextPath() + "/produto/listar?sucesso_atualizacao=true");
+        } catch (IllegalArgumentException e) {
+            resp.sendRedirect(req.getContextPath() + "/produto/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
+        } catch (SQLException | NumberFormatException e) {
+            throw new ServletException("Erro ao atualizar o feedback no banco de dados", e);
+        }
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        try {
+            int feedbackId = Integer.parseInt(req.getParameter("id"));
+            feedbackService.deletar(feedbackId);
+
+            resp.sendRedirect(req.getContextPath() + "/produto/listar?sucesso_delecao=true");
+        } catch (IllegalArgumentException e) {
+            resp.sendRedirect(req.getContextPath() + "/produto/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
+        } catch (SQLException | NumberFormatException e) {
+            throw new ServletException("Erro ao deletar o feedback no banco de dados", e);
         }
     }
 }

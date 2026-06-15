@@ -66,6 +66,30 @@ public class ProdutoDAO {
         return null;
     }
 
+    public void atualizar(Produto produto) throws SQLException {
+        String sql = "UPDATE Produtos SET nome = ?, descricao = ? WHERE id = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, produto.getNome());
+            stmt.setString(2, produto.getDescricao());
+            stmt.setInt(3, produto.getId());
+            stmt.executeUpdate();
+        }
+    }
+
+    public void deletar(int id) throws SQLException {
+        String sql = "DELETE FROM Produtos WHERE id = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, id);
+            stmt.executeUpdate();
+        }
+    }
+
 
     private Produto mapearResultado(ResultSet rs) throws SQLException {
         return new Produto(

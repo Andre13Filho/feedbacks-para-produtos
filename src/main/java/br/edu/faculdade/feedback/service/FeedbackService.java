@@ -78,4 +78,34 @@ public class FeedbackService {
         }
         return soma / feedbacks.size();
     }
+
+    public Feedback buscarPorId(int id) throws SQLException {
+        return feedbackDAO.buscarPorId(id);
+    }
+
+    public void atualizar(int feedbackId, int nota, String comentario) throws IllegalArgumentException, SQLException {
+        if (nota < 1 || nota > 5) {
+            throw new IllegalArgumentException("A nota deve ser um valor entre 1 e 5. Valor recebido: " + nota);
+        }
+        if (comentario == null || comentario.trim().isEmpty()) {
+            throw new IllegalArgumentException("O comentário não pode ser vazio.");
+        }
+
+        Feedback feedback = feedbackDAO.buscarPorId(feedbackId);
+        if (feedback == null) {
+            throw new IllegalArgumentException("Feedback não encontrado com o ID: " + feedbackId);
+        }
+
+        feedback.setNota(nota);
+        feedback.setComentario(comentario.trim());
+        feedbackDAO.atualizar(feedback);
+    }
+
+    public void deletar(int feedbackId) throws IllegalArgumentException, SQLException {
+        Feedback feedback = feedbackDAO.buscarPorId(feedbackId);
+        if (feedback == null) {
+            throw new IllegalArgumentException("Feedback não encontrado com o ID: " + feedbackId);
+        }
+        feedbackDAO.deletar(feedbackId);
+    }
 }
