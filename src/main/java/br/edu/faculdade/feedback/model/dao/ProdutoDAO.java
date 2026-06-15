@@ -7,50 +7,32 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DAO da entidade Produto.
- * Responsável pelas operações SQL na tabela Produtos.
- *
- * Projeto: Aplicativo de Feedback para Produtos
- * Autores: André (5169692) e Otávio (5167958)
- */
 public class ProdutoDAO {
 
-    /**
-     * Insere um novo produto no banco de dados.
-     */
     public void inserir(Produto produto) throws SQLException {
         String sql = "INSERT INTO Produtos (nome, descricao) VALUES (?, ?)";
-
-        // Obtém a conexão Singleton (não pode fechar ela no try-with-resources)
         Connection conn = ConnectionFactory.getConnection();
 
-        // Apenas o PreparedStatement é fechado automaticamente
         try (PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             stmt.setString(1, produto.getNome());
             stmt.setString(2, produto.getDescricao());
             stmt.executeUpdate();
 
-            try (ResultSet chaveGerada = stmt.getGeneratedKeys()) {
-                if (chaveGerada.next()) {
-                    produto.setId(chaveGerada.getInt(1));
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) {
+                    produto.setId(rs.getInt(1));
                 }
             }
         }
     }
 
-    /**
-     * Retorna todos os produtos cadastrados, ordenados por nome.
-     */
     public List<Produto> listarTodos() throws SQLException {
         String sql = "SELECT id, nome, descricao FROM Produtos ORDER BY nome";
         List<Produto> produtos = new ArrayList<>();
-
         Connection conn = ConnectionFactory.getConnection();
 
         try (PreparedStatement stmt = conn.prepareStatement(sql);
-                ResultSet rs = stmt.executeQuery()) {
-
+             ResultSet rs = stmt.executeQuery()) {
             while (rs.next()) {
                 produtos.add(mapearResultado(rs));
             }
@@ -58,23 +40,14 @@ public class ProdutoDAO {
         return produtos;
     }
 
-    /**
-     * Busca um produto pelo seu ID.
-     *
-     * @return Produto encontrado ou null se não existir
-     */
     public Produto buscarPorId(int id) throws SQLException {
         String sql = "SELECT id, nome, descricao FROM Produtos WHERE id = ?";
-
         Connection conn = ConnectionFactory.getConnection();
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
-
             try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapearResultado(rs);
-                }
+                if (rs.next()) return mapearResultado(rs);
             }
         }
         return null;
@@ -82,10 +55,9 @@ public class ProdutoDAO {
 
     public void atualizar(Produto produto) throws SQLException {
         String sql = "UPDATE Produtos SET nome = ?, descricao = ? WHERE id = ?";
+        Connection conn = ConnectionFactory.getConnection();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-                PreparedStatement stmt = conn.prepareStatement(sql)) {
-
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, produto.getNome());
             stmt.setString(2, produto.getDescricao());
             stmt.setInt(3, produto.getId());
@@ -95,10 +67,9 @@ public class ProdutoDAO {
 
     public void deletar(int id) throws SQLException {
         String sql = "DELETE FROM Produtos WHERE id = ?";
+        Connection conn = ConnectionFactory.getConnection();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-                PreparedStatement stmt = conn.prepareStatement(sql)) {
-
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setInt(1, id);
             stmt.executeUpdate();
         }
@@ -106,8 +77,9 @@ public class ProdutoDAO {
 
     private Produto mapearResultado(ResultSet rs) throws SQLException {
         return new Produto(
-                rs.getInt("id"),
-                rs.getString("nome"),
-                rs.getString("descricao"));
+            rs.getInt("id"),
+            rs.getString("nome"),
+            rs.getString("descricao")
+        );
     }
 }

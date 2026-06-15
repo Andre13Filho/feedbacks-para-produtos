@@ -7,6 +7,7 @@ import br.edu.faculdade.feedback.service.ProdutoService;
 import br.edu.faculdade.feedback.util.JsonUtil;
 import com.google.gson.JsonObject;
 
+import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,62 +16,30 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.util.List;
 
-/**
- * Controller REST para operações com Produtos.
- * Recebe requisições HTTP, lê os dados do body em JSON
- * e retorna as respostas também em JSON.
- *
- * Rotas:
- * GET /api/produtos → lista todos os produtos
- * GET /api/produtos/1 → busca produto por ID (com feedbacks)
- * POST /api/produtos → cadastra um produto novo
- *
- * Projeto: Aplicativo de Feedback para Produtos
- * Autores: André (5169692) e Otávio (5167958)
- */
 @WebServlet("/api/produtos/*")
 public class ProdutoController extends HttpServlet {
 
     private final ProdutoService produtoService = new ProdutoService();
     private final FeedbackService feedbackService = new FeedbackService();
 
-    /**
-     * GET /api/produtos → lista todos
-     * GET /api/produtos/1 → busca por ID com feedbacks e média
-     */
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String rota = extrairRota(req);
 
         switch (rota) {
-            case "/listar":
-                listar(req, resp);
-                break;
-            case "/avaliar":
-                avaliar(req, resp);
-                break;
-            case "/novo":
-                novo(req, resp);
-                break;
-            case "/detalhes":
-                detalhes(req, resp);
-                break;
-            default:
-                resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar");
-                break;
+            case "/listar": listar(req, resp); break;
+            case "/avaliar": avaliar(req, resp); break;
+            case "/novo": novo(req, resp); break;
+            case "/detalhes": detalhes(req, resp); break;
+            default: resp.sendRedirect(req.getContextPath() + "/api/produtos/listar"); break;
         }
     }
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String method = req.getParameter("_method");
-        if ("PUT".equalsIgnoreCase(method)) {
-            doPut(req, resp);
-            return;
-        } else if ("DELETE".equalsIgnoreCase(method)) {
-            doDelete(req, resp);
-            return;
-        }
+        if ("PUT".equalsIgnoreCase(method)) { doPut(req, resp); return; }
+        if ("DELETE".equalsIgnoreCase(method)) { doDelete(req, resp); return; }
 
         String rota = extrairRota(req);
         if ("/cadastrar".equals(rota)) {
@@ -89,11 +58,10 @@ public class ProdutoController extends HttpServlet {
                 String nome = req.getParameter("nome");
                 String descricao = req.getParameter("descricao");
                 produtoService.atualizar(id, nome, descricao);
-                resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?sucesso_atualizacao=true");
+                resp.sendRedirect(req.getContextPath() + "/api/produtos/listar?sucesso_atualizacao=true");
             } catch (IllegalArgumentException e) {
-                resp.sendRedirect(
-                        req.getContextPath() + PREFIXO_APP + "/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
-            } catch (SQLException | NumberFormatException e) {
+                resp.sendRedirect(req.getContextPath() + "/api/produtos/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
+            } catch (SQLException e) {
                 throw new ServletException("Erro ao atualizar produto", e);
             }
         } else {
@@ -108,11 +76,10 @@ public class ProdutoController extends HttpServlet {
             try {
                 int id = Integer.parseInt(req.getParameter("id"));
                 produtoService.deletar(id);
-                resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar?sucesso_delecao=true");
+                resp.sendRedirect(req.getContextPath() + "/api/produtos/listar?sucesso_delecao=true");
             } catch (IllegalArgumentException e) {
-                resp.sendRedirect(
-                        req.getContextPath() + PREFIXO_APP + "/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
-            } catch (SQLException | NumberFormatException e) {
+                resp.sendRedirect(req.getContextPath() + "/api/produtos/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
+            } catch (SQLException e) {
                 throw new ServletException("Erro ao deletar produto", e);
             }
         } else {
@@ -122,9 +89,7 @@ public class ProdutoController extends HttpServlet {
 
     private String extrairRota(HttpServletRequest req) {
         String pathInfo = req.getPathInfo();
-        if (pathInfo == null || pathInfo.isEmpty() || "/".equals(pathInfo)) {
-            return "/listar";
-        }
+        if (pathInfo == null || pathInfo.isEmpty() || "/".equals(pathInfo)) return "/listar";
         return pathInfo;
     }
 
@@ -144,15 +109,14 @@ public class ProdutoController extends HttpServlet {
             try {
                 int id = Integer.parseInt(idParam);
                 Produto produto = produtoService.buscarPorId(id);
-
                 if (produto == null) {
                     JsonUtil.enviarErro(resp, 404, "Produto não encontrado com o ID: " + id);
                     return;
                 }
-            } catch (SQLException | NumberFormatException e) {
+            } catch (SQLException e) {
             }
         }
-        resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar");
+        resp.sendRedirect(req.getContextPath() + "/api/produtos/listar");
     }
 
     private void novo(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -160,23 +124,16 @@ public class ProdutoController extends HttpServlet {
     }
 
     private void cadastrar(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String nome = req.getParameter("nome");
-        String descricao = req.getParameter("descricao");
-
-        produtoService.cadastrar(dados.getNome(), dados.getDescricao());
-
-        JsonUtil.enviarSucesso(resp, 201, "Produto cadastrado com sucesso!");
-    }catch(
-
-    IllegalArgumentException e)
-    {
-        resp.sendRedirect(
-                req.getContextPath() + PREFIXO_APP + "/novo?erro=" + resp.encodeRedirectURL(e.getMessage()));
-    }catch(
-    SQLException e)
-    {
-        throw new ServletException("Erro ao cadastrar produto", e);
-    }
+        try {
+            String nome = req.getParameter("nome");
+            String descricao = req.getParameter("descricao");
+            produtoService.cadastrar(nome, descricao);
+            resp.sendRedirect(req.getContextPath() + "/api/produtos/listar?sucesso=true");
+        } catch (IllegalArgumentException e) {
+            resp.sendRedirect(req.getContextPath() + "/api/produtos/novo?erro=" + resp.encodeRedirectURL(e.getMessage()));
+        } catch (SQLException e) {
+            throw new ServletException("Erro ao cadastrar produto", e);
+        }
     }
 
     private void detalhes(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -188,17 +145,15 @@ public class ProdutoController extends HttpServlet {
                 if (produto != null) {
                     List<Feedback> feedbacks = feedbackService.listarFeedbacksDoProduto(id);
                     double media = feedbackService.calcularMediaAvaliacoes(feedbacks);
-
                     req.setAttribute("produto", produto);
                     req.setAttribute("feedbacks", feedbacks);
                     req.setAttribute("media", media);
-
                     req.getRequestDispatcher("/detalhes_produto.jsp").forward(req, resp);
                     return;
                 }
-            } catch (SQLException | NumberFormatException e) {
+            } catch (SQLException e) {
             }
         }
-        resp.sendRedirect(req.getContextPath() + PREFIXO_APP + "/listar");
+        resp.sendRedirect(req.getContextPath() + "/api/produtos/listar");
     }
 }

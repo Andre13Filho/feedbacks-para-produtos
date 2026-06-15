@@ -27,7 +27,6 @@ public class ApiFeedbackController extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
 
         try {
-            // Lê o corpo da requisição em JSON
             BufferedReader reader = req.getReader();
             JsonObject payload = gson.fromJson(reader, JsonObject.class);
 
@@ -41,7 +40,6 @@ public class ApiFeedbackController extends HttpServlet {
             int nota = payload.get("nota").getAsInt();
             String comentario = payload.get("comentario").getAsString();
 
-            // Pega o ID do usuário que foi injetado pelo AuthFilter
             Integer usuarioId = (Integer) req.getAttribute("usuarioId");
 
             if (usuarioId == null) {
@@ -50,10 +48,9 @@ public class ApiFeedbackController extends HttpServlet {
                 return;
             }
 
-            // Registra o feedback usando o ID seguro vindo do token JWT
             Feedback feedback = feedbackService.registrarFeedback(usuarioId, produtoId, nota, comentario);
 
-            resp.setStatus(HttpServletResponse.SC_CREATED); // 201 Created
+            resp.setStatus(HttpServletResponse.SC_CREATED);
             PrintWriter out = resp.getWriter();
             out.print(gson.toJson(feedback));
             out.flush();

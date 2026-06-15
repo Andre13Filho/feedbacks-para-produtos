@@ -55,7 +55,7 @@ public class AuthController extends HttpServlet {
             responseJson.addProperty("userId", usuario.getId());
             responseJson.addProperty("nome", usuario.getNome());
 
-            resp.setStatus(HttpServletResponse.SC_OK); // 200 OK
+            resp.setStatus(HttpServletResponse.SC_OK);
             PrintWriter out = resp.getWriter();
             out.print(gson.toJson(responseJson));
             out.flush();

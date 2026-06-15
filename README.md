@@ -1,11 +1,11 @@
 # Aplicativo de Feedback para Produtos
 
 Projeto acadêmico desenvolvido para a disciplina de Programação Web.
-Aplicação web Java seguindo o padrão arquitetural MVC (Model-View-Controller).
+API REST em Java seguindo o padrão arquitetural MVC (Model-View-Controller).
 
 **Autores:**
-- André — RA 5169692 (Controller + View)
-- Otávio — RA 5167958 (Model + Banco de Dados)
+- André — RA 5169692 (Controller + View + JWT + PUT/DELETE)
+- Otávio — RA 5167958 (Model + Banco de Dados + Singleton + Login)
 
 ---
 
@@ -18,7 +18,8 @@ Aplicação web Java seguindo o padrão arquitetural MVC (Model-View-Controller)
 | Banco de Dados | MySQL 8.0 |
 | Acesso ao banco | JDBC puro (sem frameworks) |
 | Build | Maven |
-| Containerização | Docker + Docker Compose |
+| Serialização | Gson (JSON) |
+| Autenticação | JWT (java-jwt) |
 | Frontend | JSP + HTML/CSS puro |
 
 ---
@@ -27,106 +28,58 @@ Aplicação web Java seguindo o padrão arquitetural MVC (Model-View-Controller)
 
 ```
 src/main/java/br/edu/faculdade/feedback/
-├── controller/          → Servlets (requisição HTTP) — André
-│   ├── ProdutoController.java
-│   └── FeedbackController.java
-├── service/             → Regras de negócio
+├── controller/              → Servlets (requisição HTTP)
+│   ├── ProdutoController.java   → CRUD de produtos (GET/POST/PUT/DELETE)
+│   ├── FeedbackController.java  → CRUD de feedbacks
+│   ├── UsuarioController.java   → Login e cadastro de usuários
+│   └── AuthController.java      → Login com geração de token JWT
+├── controller/api/
+│   └── ApiFeedbackController.java → API REST de feedbacks
+├── filter/
+│   └── AuthFilter.java          → Filtro JWT para proteger rotas /api/*
+├── service/                 → Regras de negócio
 │   ├── FeedbackService.java
-│   └── ProdutoService.java
+│   ├── ProdutoService.java
+│   └── UsuarioService.java
 ├── model/
-│   ├── entity/          → Entidades / tabelas do banco — Otávio
+│   ├── entity/              → Entidades / tabelas do banco
 │   │   ├── Usuario.java
 │   │   ├── Produto.java
 │   │   └── Feedback.java
-│   └── dao/             → Acesso ao banco (SQL) — Otávio
+│   └── dao/                 → Acesso ao banco (SQL)
 │       ├── UsuarioDAO.java
 │       ├── ProdutoDAO.java
 │       └── FeedbackDAO.java
 └── util/
-    └── ConnectionFactory.java  → Conexão JDBC — Otávio
-
-src/main/webapp/         → Telas JSP — André
-├── index.jsp
-├── lista_produtos.jsp
-├── form_produto.jsp
-├── form-feedback.jsp
-└── detalhes_produto.jsp
+    ├── ConnectionFactory.java    → Conexão JDBC Singleton
+    ├── DatabaseInitializer.java  → Cria o banco automaticamente ao iniciar
+    ├── JsonUtil.java             → Leitura/escrita de JSON
+    └── JwtUtil.java              → Geração e validação de tokens JWT
 ```
 
 ---
 
 ## Banco de Dados
 
-Banco MySQL com 3 tabelas:
+O banco é criado **automaticamente** quando a aplicação inicia (via `DatabaseInitializer`).
+Não é necessário rodar nenhum script SQL manualmente.
 
-- **Usuarios** — armazena quem envia o feedback (`id`, `nome`, `email`)
+Tabelas:
+- **Usuarios** — quem envia o feedback (`id`, `nome`, `email`, `senha`)
 - **Produtos** — catálogo de produtos avaliáveis (`id`, `nome`, `descricao`)
 - **Feedback** — avaliação de um usuário sobre um produto (`id`, `usuario_id`, `produto_id`, `nota`, `comentario`, `data_criacao`)
 
-> O script completo de criação está em `schema.sql` e é executado automaticamente ao subir o Docker.
-
----
-
-## Fluxo Completo do Código
-
-### 1. Listagem de Produtos
-```
-Navegador → GET /produto/listar
-  → ProdutoController.listar()
-    → ProdutoService.listar()
-      → ProdutoDAO.listarTodos()        [SELECT no banco]
-        → List<Produto> retornada
-  → request.setAttribute("produtos", lista)
-  → forward para lista_produtos.jsp     [exibe a tabela]
-```
-
-### 2. Cadastro de Produto
-```
-Usuário preenche form_produto.jsp → POST /produto/cadastrar
-  → ProdutoController.cadastrar()
-    → ProdutoService.cadastrar(nome, descricao)
-      [valida: nome não pode ser vazio]
-      → ProdutoDAO.inserir(produto)     [INSERT no banco]
-  → redirect para /produto/listar?sucesso_produto=true
-```
-
-### 3. Envio de Feedback
-```
-Usuário clica "Deixar Feedback" → GET /produto/avaliar?id=X
-  → ProdutoController.avaliar()
-    → ProdutoService.buscarPorId(id)   [SELECT no banco]
-  → forward para form-feedback.jsp     [exibe formulário]
-
-Usuário preenche o formulário → POST /feedback/salvar
-  → FeedbackController.doPost()
-    → FeedbackService.registrarFeedback(usuarioId, produtoId, nota, comentario)
-      [valida: nota entre 1 e 5]
-      [valida: comentário não vazio]
-      [valida: usuário existe no banco]
-      [valida: produto existe no banco]
-      → FeedbackDAO.inserir(feedback)  [INSERT no banco]
-  → redirect para /produto/listar?sucesso=true
-```
-
-### 4. Detalhes e Avaliações de um Produto
-```
-Usuário clica "★ Avaliações" → GET /produto/detalhes?id=X
-  → ProdutoController.detalhes()
-    → ProdutoService.buscarPorId(id)              [SELECT Produtos]
-    → FeedbackService.listarFeedbacksDoProduto(id) [SELECT Feedback ORDER BY data DESC]
-    → FeedbackService.calcularMediaAvaliacoes(feedbacks) [cálculo em memória]
-  → request.setAttribute("produto", produto)
-  → request.setAttribute("feedbacks", lista)
-  → request.setAttribute("media", media)
-  → forward para detalhes_produto.jsp  [exibe cards de avaliação + média]
-```
+Dados de teste são inseridos automaticamente na primeira execução.
 
 ---
 
 ## Como Executar
 
-### Pré-requisito
-- [Docker Desktop](https://www.docker.com/products/docker-desktop) instalado e em execução.
+### Pré-requisitos
+- **Java 17+** (JDK)
+- **Maven 3.9+**
+- **MySQL 8.0** (usuário `root`, senha `root`)
+- **Apache Tomcat 10.1**
 
 ### Passos
 
@@ -136,28 +89,87 @@ git clone https://github.com/Andre13Filho/feedbacks-para-produtos.git
 cd feedbacks-para-produtos
 ```
 
-**2. Suba a aplicação:**
+**2. Compile o projeto:**
 ```bash
-docker-compose up --build
-```
-> Na primeira execução o Docker irá baixar as imagens e compilar o projeto (aguarde ~3 minutos).
-
-**3. Acesse no navegador:**
-```
-http://localhost:8081
+mvn clean package
 ```
 
-**4. Para encerrar:**
+**3. Copie o WAR para o Tomcat:**
 ```bash
-docker-compose down
+cp target/feedback-app.war <TOMCAT_HOME>/webapps/
+```
+
+**4. Inicie o Tomcat:**
+```bash
+<TOMCAT_HOME>/bin/startup.sh    # Linux/Mac
+<TOMCAT_HOME>\bin\startup.bat   # Windows
+```
+
+**5. Acesse no navegador:**
+```
+http://localhost:8080/feedback-app/
+```
+
+> O banco de dados e as tabelas são criados automaticamente na primeira execução.
+
+---
+
+## Endpoints da API
+
+Todas as rotas `/api/*` (exceto login) exigem o header `Authorization: Bearer <token>`.
+
+### Autenticação
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/api/login` | Login com email e senha, retorna token JWT |
+
+### Usuários
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/api/usuarios/login` | Login (retorna dados do usuário) |
+| POST | `/api/usuarios` | Cadastrar novo usuário |
+
+### Produtos
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/api/produtos/listar` | Lista todos os produtos |
+| GET | `/api/produtos/detalhes?id=X` | Detalhes de um produto com feedbacks |
+| POST | `/api/produtos/cadastrar` | Cadastrar novo produto |
+| PUT | `/api/produtos/atualizar` | Atualizar produto |
+| DELETE | `/api/produtos/deletar` | Deletar produto |
+
+### Feedbacks
+| Método | Rota | Descrição |
+|---|---|---|
+| POST | `/feedback` | Enviar feedback |
+| PUT | `/feedback` | Atualizar feedback |
+| DELETE | `/feedback` | Deletar feedback |
+
+---
+
+## Exemplo de uso com Postman
+
+**1. Fazer login:**
+```json
+POST http://localhost:8080/feedback-app/api/login
+Body: { "email": "andre@email.com", "senha": "senha123" }
+```
+
+**2. Usar o token retornado nas demais requisições:**
+```
+Header: Authorization: Bearer <token_recebido>
 ```
 
 ---
 
 ## Funcionalidades
 
-- [x] Listar todos os produtos cadastrados
-- [x] Cadastrar novo produto
-- [x] Deixar feedback (nota de 1 a 5 + comentário) em um produto
-- [x] Ver todas as avaliações de um produto com média de notas
+- [x] API REST com respostas em JSON
+- [x] Autenticação via JWT (token)
+- [x] CRUD completo de Produtos (GET, POST, PUT, DELETE)
+- [x] CRUD completo de Feedbacks
+- [x] Login com e-mail e senha
 - [x] Validação de dados antes de salvar no banco
+- [x] Conexão Singleton com o banco de dados
+- [x] Banco criado automaticamente ao iniciar a aplicação
+- [x] Dados de exemplo inseridos automaticamente

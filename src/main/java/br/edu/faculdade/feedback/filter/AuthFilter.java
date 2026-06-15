@@ -26,13 +26,11 @@ public class AuthFilter implements Filter {
 
         String path = req.getRequestURI();
 
-        // Permite acesso público à rota de login
         if (path.endsWith("/api/login")) {
             chain.doFilter(request, response);
             return;
         }
 
-        // Lê o header de Authorization
         String authHeader = req.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -43,24 +41,14 @@ public class AuthFilter implements Filter {
             return;
         }
 
-        // Extrai o token após o prefixo "Bearer "
         String token = authHeader.substring(7);
 
         try {
-            // Verifica a validade e a assinatura do token
             DecodedJWT jwt = JwtUtil.verifyToken(token);
-            
-            // Extrai a claim que precisamos
             Integer userId = jwt.getClaim("userId").asInt();
-            
-            // Atribui ao request para que os Controllers possam acessar
             req.setAttribute("usuarioId", userId);
-            
-            // Prossegue com a requisição para o Controller
             chain.doFilter(request, response);
-            
         } catch (JWTVerificationException e) {
-            // Token inválido, expirado ou forjado
             resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             resp.setContentType("application/json");
             resp.setCharacterEncoding("UTF-8");

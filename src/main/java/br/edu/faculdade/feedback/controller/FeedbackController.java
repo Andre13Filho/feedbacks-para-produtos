@@ -1,9 +1,11 @@
 package br.edu.faculdade.feedback.controller;
 
 import br.edu.faculdade.feedback.model.entity.Feedback;
+import br.edu.faculdade.feedback.model.entity.Usuario;
 import br.edu.faculdade.feedback.service.FeedbackService;
 import br.edu.faculdade.feedback.util.JsonUtil;
 
+import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,10 +18,6 @@ public class FeedbackController extends HttpServlet {
 
     private final FeedbackService feedbackService = new FeedbackService();
 
-    /**
-     * GET /api/feedbacks?produtoId=1
-     * Retorna todos os feedbacks de um produto específico.
-     */
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String method = req.getParameter("_method");
@@ -65,7 +63,7 @@ public class FeedbackController extends HttpServlet {
             resp.sendRedirect(req.getContextPath() + "/produto/listar?sucesso_atualizacao=true");
         } catch (IllegalArgumentException e) {
             resp.sendRedirect(req.getContextPath() + "/produto/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
-        } catch (SQLException | NumberFormatException e) {
+        } catch (SQLException e) {
             throw new ServletException("Erro ao atualizar o feedback no banco de dados", e);
         }
     }
@@ -79,7 +77,7 @@ public class FeedbackController extends HttpServlet {
             resp.sendRedirect(req.getContextPath() + "/produto/listar?sucesso_delecao=true");
         } catch (IllegalArgumentException e) {
             resp.sendRedirect(req.getContextPath() + "/produto/listar?erro=" + resp.encodeRedirectURL(e.getMessage()));
-        } catch (SQLException | NumberFormatException e) {
+        } catch (SQLException e) {
             throw new ServletException("Erro ao deletar o feedback no banco de dados", e);
         }
     }

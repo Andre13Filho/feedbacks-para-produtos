@@ -10,10 +10,9 @@ import java.util.Date;
 
 public class JwtUtil {
 
-    // Idealmente, a chave secreta deve ser carregada de variáveis de ambiente
-    private static final String SECRET_KEY = "segredo"; 
+    private static final String SECRET_KEY = "segredo";
     private static final String ISSUER = "minha-api";
-    private static final long EXPIRATION_TIME = 86400000; // 24 horas
+    private static final long EXPIRATION_TIME = 86400000;
 
     public static String generateToken(Usuario usuario) {
         Algorithm algorithm = Algorithm.HMAC256(SECRET_KEY);
