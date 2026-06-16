@@ -1,10 +1,10 @@
 # Aplicativo de Feedback para Produtos
 
 Projeto acadêmico desenvolvido para a disciplina de Programação Web.
-API REST em Java seguindo o padrão arquitetural MVC (Model-View-Controller).
+API REST nativa em Java (usando Servlets) seguindo o padrão arquitetural MVC.
 
 **Autores:**
-- André — RA 5169692 (Controller + View + JWT + PUT/DELETE)
+- André — RA 5169692 (Controller + View + JWT + PUT/PATCH/DELETE)
 - Otávio — RA 5167958 (Model + Banco de Dados + Singleton + Login)
 
 ---
@@ -14,46 +14,37 @@ API REST em Java seguindo o padrão arquitetural MVC (Model-View-Controller).
 | Camada | Tecnologia |
 |---|---|
 | Linguagem | Java 17 |
-| Servidor | Apache Tomcat 10.1 |
-| Banco de Dados | MySQL 8.0 |
+| Servidor | Apache Tomcat 10.1 (via Docker) |
+| Banco de Dados | MySQL 8.0 (via Docker) |
 | Acesso ao banco | JDBC puro (sem frameworks) |
 | Build | Maven |
 | Serialização | Gson (JSON) |
-| Autenticação | JWT (java-jwt) |
-| Frontend | JSP + HTML/CSS puro |
+| Autenticação | JWT (java-jwt da Auth0) |
+| Containerização | Docker e Docker Compose |
 
 ---
 
 ## Arquitetura MVC
 
-```
+```text
 src/main/java/br/edu/faculdade/feedback/
-├── controller/              → Servlets (requisição HTTP)
-│   ├── ProdutoController.java   → CRUD de produtos (GET/POST/PUT/DELETE)
-│   ├── FeedbackController.java  → CRUD de feedbacks
-│   ├── UsuarioController.java   → Login e cadastro de usuários
-│   └── AuthController.java      → Login com geração de token JWT
-├── controller/api/
-│   └── ApiFeedbackController.java → API REST de feedbacks
+├── controller/              → Servlets REST (requisição HTTP)
+│   ├── ProdutoRestController.java   → CRUD de produtos (GET/POST/PUT/PATCH/DELETE)
+│   ├── FeedbackRestController.java  → CRUD de feedbacks (GET/POST/PUT/PATCH/DELETE)
+│   ├── UsuarioController.java       → Cadastro e login de usuários
+│   └── AuthController.java          → Geração de token JWT (/api/login)
 ├── filter/
-│   └── AuthFilter.java          → Filtro JWT para proteger rotas /api/*
+│   └── AuthFilter.java          → Filtro para proteger rotas /api/* exigindo JWT
 ├── service/                 → Regras de negócio
 │   ├── FeedbackService.java
 │   ├── ProdutoService.java
 │   └── UsuarioService.java
 ├── model/
 │   ├── entity/              → Entidades / tabelas do banco
-│   │   ├── Usuario.java
-│   │   ├── Produto.java
-│   │   └── Feedback.java
 │   └── dao/                 → Acesso ao banco (SQL)
-│       ├── UsuarioDAO.java
-│       ├── ProdutoDAO.java
-│       └── FeedbackDAO.java
 └── util/
     ├── ConnectionFactory.java    → Conexão JDBC Singleton
-    ├── DatabaseInitializer.java  → Cria o banco automaticamente ao iniciar
-    ├── JsonUtil.java             → Leitura/escrita de JSON
+    ├── JsonUtil.java             → Leitura/escrita de JSON (Respostas 200, 201, 204)
     └── JwtUtil.java              → Geração e validação de tokens JWT
 ```
 
@@ -61,7 +52,7 @@ src/main/java/br/edu/faculdade/feedback/
 
 ## Banco de Dados
 
-O banco é criado **automaticamente** quando a aplicação inicia (via `DatabaseInitializer`).
+O banco de dados e suas tabelas são criados **automaticamente** pelo script `schema.sql` montado na imagem do MySQL pelo Docker Compose.
 Não é necessário rodar nenhum script SQL manualmente.
 
 Tabelas:
@@ -69,17 +60,17 @@ Tabelas:
 - **Produtos** — catálogo de produtos avaliáveis (`id`, `nome`, `descricao`)
 - **Feedback** — avaliação de um usuário sobre um produto (`id`, `usuario_id`, `produto_id`, `nota`, `comentario`, `data_criacao`)
 
-Dados de teste são inseridos automaticamente na primeira execução.
+Dados de teste são inseridos automaticamente na inicialização do container de banco de dados.
 
 ---
 
 ## Como Executar
 
+Toda a aplicação agora está containerizada, tornando a execução extremamente simples!
+
 ### Pré-requisitos
-- **Java 17+** (JDK)
-- **Maven 3.9+**
-- **MySQL 8.0** (usuário `root`, senha `root`)
-- **Apache Tomcat 10.1**
+- **Docker**
+- **Docker Compose**
 
 ### Passos
 
@@ -89,87 +80,85 @@ git clone https://github.com/Andre13Filho/feedbacks-para-produtos.git
 cd feedbacks-para-produtos
 ```
 
-**2. Compile o projeto:**
+**2. Inicie a aplicação com Docker Compose:**
 ```bash
-mvn clean package
+docker-compose up -d --build
+```
+*Isso fará o build do Java via Maven e iniciará os containers do Tomcat e do MySQL.*
+
+**3. Acesse a API:**
+A aplicação estará disponível na porta `8081`:
+```
+http://localhost:8081/api/...
 ```
 
-**3. Copie o WAR para o Tomcat:**
-```bash
-cp target/feedback-app.war <TOMCAT_HOME>/webapps/
-```
-
-**4. Inicie o Tomcat:**
-```bash
-<TOMCAT_HOME>/bin/startup.sh    # Linux/Mac
-<TOMCAT_HOME>\bin\startup.bat   # Windows
-```
-
-**5. Acesse no navegador:**
-```
-http://localhost:8080/feedback-app/
-```
-
-> O banco de dados e as tabelas são criados automaticamente na primeira execução.
+Para parar a aplicação, rode: `docker-compose down`
 
 ---
 
-## Endpoints da API
+## Endpoints da API REST
 
-Todas as rotas `/api/*` (exceto login) exigem o header `Authorization: Bearer <token>`.
+Todas as rotas `/api/*` exigem o header `Authorization: Bearer <token>`, com exceção do Login e Cadastro de Usuários.
 
-### Autenticação
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/login` | Login com email e senha, retorna token JWT |
-
-### Usuários
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/usuarios/login` | Login (retorna dados do usuário) |
-| POST | `/api/usuarios` | Cadastrar novo usuário |
+### Autenticação & Usuários
+| Método | Rota | Descrição | Requer Token? |
+|---|---|---|---|
+| POST | `/api/login` | Login com email e senha, retorna token JWT | Não |
+| POST | `/api/usuarios` | Cadastrar novo usuário | Não |
 
 ### Produtos
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `/api/produtos/listar` | Lista todos os produtos |
-| GET | `/api/produtos/detalhes?id=X` | Detalhes de um produto com feedbacks |
-| POST | `/api/produtos/cadastrar` | Cadastrar novo produto |
-| PUT | `/api/produtos/atualizar` | Atualizar produto |
-| DELETE | `/api/produtos/deletar` | Deletar produto |
+| GET | `/api/produtos` | Lista todos os produtos |
+| GET | `/api/produtos/{id}` | Detalhes de um produto e seus feedbacks |
+| POST | `/api/produtos` | Cadastrar novo produto |
+| PUT | `/api/produtos/{id}` | Atualização completa do produto |
+| PATCH | `/api/produtos/{id}` | Atualização parcial do produto |
+| DELETE | `/api/produtos/{id}` | Deleta um produto (Retorna 204 No Content) |
 
 ### Feedbacks
 | Método | Rota | Descrição |
 |---|---|---|
-| POST | `/feedback` | Enviar feedback |
-| PUT | `/feedback` | Atualizar feedback |
-| DELETE | `/feedback` | Deletar feedback |
+| GET | `/api/feedbacks?produtoId={id}`| Lista feedbacks de um produto |
+| POST | `/api/feedbacks` | Cadastrar feedback (usuarioId extraído do JWT) |
+| PUT | `/api/feedbacks/{id}` | Atualização completa do feedback |
+| PATCH | `/api/feedbacks/{id}` | Atualização parcial do feedback |
+| DELETE | `/api/feedbacks/{id}` | Deleta um feedback (Retorna 204 No Content) |
 
 ---
 
-## Exemplo de uso com Postman
+## Testando com Postman
 
 **1. Fazer login:**
-```json
-POST http://localhost:8080/feedback-app/api/login
-Body: { "email": "andre@email.com", "senha": "senha123" }
+```http
+POST http://localhost:8081/api/login
+Body (raw -> JSON):
+{
+    "email": "andre@email.com",
+    "senha": "senha123"
+}
 ```
 
-**2. Usar o token retornado nas demais requisições:**
+**2. Copie o token da resposta:**
+```json
+{
+    "token": "eyJhbGci...",
+    "userId": 1,
+    "nome": "André Silva"
+}
 ```
-Header: Authorization: Bearer <token_recebido>
-```
+
+**3. Usar o token nas requisições protegidas (Ex: GET /api/produtos):**
+No Postman, vá na aba **Authorization** > selecione **Bearer Token** > Cole o seu token no campo *Token*.
 
 ---
 
-## Funcionalidades
+## Funcionalidades Implementadas
 
-- [x] API REST com respostas em JSON
-- [x] Autenticação via JWT (token)
-- [x] CRUD completo de Produtos (GET, POST, PUT, DELETE)
-- [x] CRUD completo de Feedbacks
-- [x] Login com e-mail e senha
-- [x] Validação de dados antes de salvar no banco
-- [x] Conexão Singleton com o banco de dados
-- [x] Banco criado automaticamente ao iniciar a aplicação
-- [x] Dados de exemplo inseridos automaticamente
+- [x] API REST Nativa com Servlets
+- [x] Padrão JSON para respostas e recebimento de payload no corpo (Body)
+- [x] Autenticação Stateless via JWT (java-jwt da Auth0)
+- [x] Filtro de Segurança (AuthFilter) barrando acessos indevidos com 401 Unauthorized
+- [x] CRUD completo e aderente aos métodos HTTP (GET, POST, PUT, PATCH, DELETE)
+- [x] Status Codes HTTP apropriados (200 OK, 201 Created, 204 No Content, 400, 401, 404, 500)
+- [x] Containerização via Docker (Aplicação + Banco de Dados MySQL)
