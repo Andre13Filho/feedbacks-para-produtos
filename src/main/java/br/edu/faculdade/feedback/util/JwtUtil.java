@@ -10,7 +10,7 @@ import java.util.Date;
 
 public class JwtUtil {
 
-    private static final String SECRET_KEY = "segredo";
+    private static final String SECRET_KEY = "secreto";
     private static final String ISSUER = "minha-api";
     private static final long EXPIRATION_TIME = 86400000;
 
@@ -19,7 +19,6 @@ public class JwtUtil {
         return JWT.create()
                 .withIssuer(ISSUER)
                 .withClaim("userId", usuario.getId())
-                .withClaim("email", usuario.getEmail())
                 .withExpiresAt(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .sign(algorithm);
     }

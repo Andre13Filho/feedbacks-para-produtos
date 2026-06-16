@@ -26,7 +26,7 @@ public class AuthFilter implements Filter {
 
         String path = req.getRequestURI();
 
-        if (path.endsWith("/api/login")) {
+        if (path.endsWith("/api/login") || path.endsWith("/api/usuarios")) {
             chain.doFilter(request, response);
             return;
         }
